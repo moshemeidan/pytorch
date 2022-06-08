@@ -102,17 +102,6 @@ namespace {
     }
     return true;
   }
-
-  Tensor maybe_match_conj_or_neg(const Tensor& self, const Tensor& target) {
-    if (target.is_conj()) {
-      return self.conj();
-    } else if (target.is_neg()) {
-      return self._neg_view();
-    } else {
-      return self;
-    }
-  }
-
 } // anonymous namespace
 
 // This function is will ensure that the fw_grad_ is properly a view of the base for inplace ops on
@@ -176,7 +165,8 @@ void AutogradMeta::set_fw_grad(const at::TensorBase& new_grad_base, const at::Te
             new_base_fw_grad = new_grad;
           } else {
             new_base_fw_grad = at::_new_zeros_with_same_feature_meta(new_grad, base);
-            new_base_fw_grad = maybe_match_conj_or_neg(new_base_fw_grad, base);
+            new_base_fw_grad._set_conj(base.is_conj());
+            new_base_fw_grad._set_neg(base.is_neg());
 
             // Update new_grad to be a view of the base
             Tensor new_fw_grad_value;
@@ -203,7 +193,8 @@ void AutogradMeta::set_fw_grad(const at::TensorBase& new_grad_base, const at::Te
             "Expected the output of forward differentiable view operations to have the tangent have the same layout as primal")
       }
       auto res = at::_new_zeros_with_same_feature_meta(new_grad, self);
-      res = maybe_match_conj_or_neg(res, self);
+      res._set_conj(self.is_conj());
+      res._set_neg(self.is_neg());
       res.copy_(new_grad);
       new_grad = res;
     }
